@@ -56,6 +56,53 @@ def create_issue(org: str, repo: str, title: str, body: str) -> dict:
         return {}
 
 
+def update_badge(org: str, repo: str, status: str) -> bool:
+    """Update the status badge in the resource repo."""
+    import base64
+    import json
+
+    badge_path = '.github/badges/status.json'
+    url = f'https://api.github.com/repos/{org}/{repo}/contents/{badge_path}'
+
+    # Map status to badge properties
+    badge_config = {
+        'active': {'message': 'active', 'color': 'brightgreen'},
+        'needs_review': {'message': 'needs review', 'color': 'orange'},
+        'archived': {'message': 'archived', 'color': 'lightgrey'}
+    }
+
+    config = badge_config.get(status, badge_config['needs_review'])
+    badge_content = {
+        'schemaVersion': 1,
+        'label': 'status',
+        'message': config['message'],
+        'color': config['color']
+    }
+
+    # Get current file (to get SHA for update)
+    r = requests.get(url, headers=HEADERS)
+    if r.status_code == 200:
+        file_sha = r.json()['sha']
+    else:
+        print(f"  Warning: Could not fetch badge file ({r.status_code})")
+        return False
+
+    # Update the badge file
+    new_content = json.dumps(badge_content, indent=2)
+    r = requests.put(url, headers=HEADERS, json={
+        'message': f'chore: update status badge to {status}',
+        'content': base64.b64encode(new_content.encode()).decode(),
+        'sha': file_sha
+    })
+
+    if r.status_code in (200, 201):
+        print(f"  Updated badge to '{config['message']}'")
+        return True
+    else:
+        print(f"  Warning: Could not update badge ({r.status_code}): {r.text}")
+        return False
+
+
 def main():
     with open('registry.yml', 'r') as f:
         data = yaml.safe_load(f)
@@ -124,6 +171,7 @@ This resource has been automatically flagged and moved to **Needs Review** statu
 cc @{owner}
 """
             create_issue(org, repo, f'[Lifecycle] {repo} — Needs Review', body)
+            update_badge(org, repo, 'needs_review')
             print(f"  → Flagged as needs_review")
 
         elif status == 'needs_review':
@@ -158,6 +206,7 @@ A new owner may volunteer to restore this resource to Active status after:
 cc @{owner}
 """
                     create_issue(org, repo, f'[Lifecycle] {repo} — Archived', body)
+                    update_badge(org, repo, 'archived')
                     print(f"  → Moved to archived after {days_in_review} days")
             else:
                 print(f"  In needs_review (no status_since date recorded)")
