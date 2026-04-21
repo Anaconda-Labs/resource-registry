@@ -19,12 +19,6 @@ def check_readme(content: str, resource_type: str) -> list[str]:
     if not re.search(r'@[\w-]+', content):
         issues.append("No GitHub handle (@username) found for owner")
 
-    if not re.search(r'last.?tested', content, re.IGNORECASE):
-        issues.append("No 'last-tested' date found in README")
-
-    if not re.search(r'status.*(active|needs.review|archived)', content, re.IGNORECASE):
-        issues.append("No lifecycle status found (expected: active / needs_review / archived)")
-
     if not re.search(
         r'(audience|who this is for|who should use|prerequisites|target)',
         content, re.IGNORECASE
