@@ -1,0 +1,45 @@
+name: Lifecycle Engine
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # Every Monday at 9am UTC
+  workflow_dispatch:        # Can also be run manually from the Actions tab
+    inputs:
+      dry_run:
+        description: 'Dry run (check statuses but do not open issues or commit changes)'
+        type: boolean
+        default: false
+
+jobs:
+  run-lifecycle-check:
+    name: Check resource lifecycle statuses
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # To commit registry.yml updates
+      issues: write     # To create issues in this repo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run lifecycle check
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: python .github/scripts/lifecycle_check.py
+
+      - name: Commit registry changes
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add registry.yml
+          git diff --staged --quiet || git commit -m "chore: automated lifecycle status update [skip ci]"
+          git push

@@ -1,0 +1,144 @@
+name: Intake Quality Check
+
+on:
+  pull_request:
+    paths:
+      - 'registry.yml'
+
+jobs:
+  validate-registry-entry:
+    name: Validate registry.yml syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate registry.yml
+        run: |
+          python - << 'EOF'
+          import yaml, sys
+
+          REQUIRED_FIELDS = [
+              'repo', 'org', 'type', 'owner_github',
+              'last_tested', 'status', 'registered', 'reviewed_by'
+          ]
+          VALID_TYPES = ['guide', 'show', 'tell']
+          VALID_STATUSES = ['active', 'needs_review', 'archived']
+
+          with open('registry.yml') as f:
+              data = yaml.safe_load(f)
+
+          issues = []
+          for i, resource in enumerate(data.get('resources', [])):
+              prefix = f"Entry {i+1} ({resource.get('repo', 'unknown')})"
+              for field in REQUIRED_FIELDS:
+                  if not resource.get(field):
+                      issues.append(f"{prefix}: missing required field '{field}'")
+              if resource.get('type') not in VALID_TYPES:
+                  issues.append(f"{prefix}: type must be one of {VALID_TYPES}")
+              if resource.get('status') not in VALID_STATUSES:
+                  issues.append(f"{prefix}: status must be one of {VALID_STATUSES}")
+
+          if issues:
+              print("registry.yml validation FAILED:\n")
+              for issue in issues:
+                  print(f"  ✗ {issue}")
+              sys.exit(1)
+          else:
+              print(f"registry.yml is valid ✓ ({len(data['resources'])} resources)")
+          EOF
+
+  check-resource-quality:
+    name: Check resource quality criteria
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Get new/changed registry entries
+        id: get-entries
+        run: |
+          python - << 'EOF'
+          import yaml, json, subprocess, sys
+
+          # Get the diff to find newly added entries
+          result = subprocess.run(
+              ['git', 'diff', 'origin/main...HEAD', '--', 'registry.yml'],
+              capture_output=True, text=True
+          )
+
+          with open('registry.yml') as f:
+              data = yaml.safe_load(f)
+
+          # For demo purposes, check all entries with status 'active'
+          # In production you would parse the diff to find only new entries
+          entries = [r for r in data.get('resources', []) if r.get('status') == 'active']
+          print(f"Entries to check: {len(entries)}")
+          with open('entries.json', 'w') as f:
+              json.dump(entries, f)
+          EOF
+
+      - name: Run quality checks against each resource
+        env:
+          GH_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          python - << 'EOF'
+          import json, os, sys, subprocess, tempfile, shutil
+
+          with open('entries.json') as f:
+              entries = json.load(f)
+
+          gh_token = os.environ.get('GH_TOKEN', '')
+          all_passed = True
+
+          for entry in entries:
+              org = entry['org']
+              repo = entry['repo']
+              resource_type = entry['type']
+
+              print(f"\nChecking {org}/{repo} (type: {resource_type})")
+              print("-" * 40)
+
+              # Clone the resource repo
+              clone_url = f"https://x-access-token:{gh_token}@github.com/{org}/{repo}.git"
+              tmpdir = tempfile.mkdtemp()
+              try:
+                  result = subprocess.run(
+                      ['git', 'clone', '--depth', '1', clone_url, tmpdir],
+                      capture_output=True, text=True
+                  )
+                  if result.returncode != 0:
+                      print(f"  Could not clone {org}/{repo}: {result.stderr}")
+                      all_passed = False
+                      continue
+
+                  # Run quality check
+                  env = os.environ.copy()
+                  env['REPO_PATH'] = tmpdir
+                  env['RESOURCE_TYPE'] = resource_type
+                  result = subprocess.run(
+                      ['python', '.github/scripts/quality_check.py'],
+                      env=env, capture_output=False
+                  )
+                  if result.returncode != 0:
+                      all_passed = False
+              finally:
+                  shutil.rmtree(tmpdir, ignore_errors=True)
+
+          if not all_passed:
+              print("\nOne or more resources failed quality checks.")
+              sys.exit(1)
+          else:
+              print("\nAll resources passed quality checks ✓")
+          EOF
