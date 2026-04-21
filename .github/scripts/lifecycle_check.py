@@ -57,12 +57,11 @@ def create_issue(org: str, repo: str, title: str, body: str) -> dict:
 
 
 def update_badge(org: str, repo: str, status: str) -> bool:
-    """Update the status badge in the resource repo."""
+    """Update the status badge and README timestamp in the resource repo."""
     import base64
     import json
-
-    badge_path = '.github/badges/status.json'
-    url = f'https://api.github.com/repos/{org}/{repo}/contents/{badge_path}'
+    import re
+    import time
 
     # Map status to badge properties
     badge_config = {
@@ -79,7 +78,10 @@ def update_badge(org: str, repo: str, status: str) -> bool:
         'color': config['color']
     }
 
-    # Get current file (to get SHA for update)
+    # Update badge file
+    badge_path = '.github/badges/status.json'
+    url = f'https://api.github.com/repos/{org}/{repo}/contents/{badge_path}'
+
     r = requests.get(url, headers=HEADERS)
     if r.status_code == 200:
         file_sha = r.json()['sha']
@@ -87,20 +89,51 @@ def update_badge(org: str, repo: str, status: str) -> bool:
         print(f"  Warning: Could not fetch badge file ({r.status_code})")
         return False
 
-    # Update the badge file
     new_content = json.dumps(badge_content, indent=2)
     r = requests.put(url, headers=HEADERS, json={
-        'message': f'chore: update status badge to {status}',
+        'message': f'chore: update status badge to {status} [skip ci]',
         'content': base64.b64encode(new_content.encode()).decode(),
         'sha': file_sha
     })
 
-    if r.status_code in (200, 201):
-        print(f"  Updated badge to '{config['message']}'")
-        return True
-    else:
+    if r.status_code not in (200, 201):
         print(f"  Warning: Could not update badge ({r.status_code}): {r.text}")
         return False
+
+    print(f"  Updated badge to '{config['message']}'")
+
+    # Update README with timestamp for cache busting
+    readme_path = 'README.md'
+    readme_url = f'https://api.github.com/repos/{org}/{repo}/contents/{readme_path}'
+
+    r = requests.get(readme_url, headers=HEADERS)
+    if r.status_code == 200:
+        readme_info = r.json()
+        readme_content = base64.b64decode(readme_info['content']).decode('utf-8')
+        readme_sha = readme_info['sha']
+
+        # Update timestamp in badge URL
+        timestamp = str(int(time.time()))
+        updated_readme = re.sub(
+            r'status\.json\?\d+&cacheSeconds',
+            f'status.json?{timestamp}&cacheSeconds',
+            readme_content
+        )
+
+        if updated_readme != readme_content:
+            r = requests.put(readme_url, headers=HEADERS, json={
+                'message': f'chore: update badge timestamp for cache busting [skip ci]',
+                'content': base64.b64encode(updated_readme.encode()).decode(),
+                'sha': readme_sha
+            })
+            if r.status_code in (200, 201):
+                print(f"  Updated README timestamp to {timestamp}")
+            else:
+                print(f"  Warning: Could not update README ({r.status_code})")
+    else:
+        print(f"  Warning: Could not fetch README ({r.status_code})")
+
+    return True
 
 
 def main():
