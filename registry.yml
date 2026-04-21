@@ -1,14 +1,14 @@
 resources:
-  - repo: anaconda-mcp-claude-desktop-demo
-    org: Anaconda-Labs
-    type: show
-    owner_github: dbouquin
-    last_tested: "2026-01-01"
-    status: active
-    status_since: "2026-04-01"
-    key_dependencies:
-      - anaconda-mcp
-      - claude-desktop
-    registered: "2026-04-01"
-    reviewed_by: dbouquin
-    notes: ""
+- repo: anaconda-mcp-claude-desktop-demo
+  org: Anaconda-Labs
+  type: show
+  owner_github: dbouquin
+  last_tested: '2026-01-01'
+  status: needs_review
+  status_since: '2026-04-21'
+  key_dependencies:
+  - anaconda-mcp
+  - claude-desktop
+  registered: '2026-04-01'
+  reviewed_by: dbouquin
+  notes: ''
