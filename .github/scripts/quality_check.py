@@ -78,10 +78,11 @@ def main():
     readme_issues = check_readme(readme_content, resource_type)
     all_issues.extend(readme_issues)
 
-    # Check environment file
-    has_env = (repo_path / 'environment.yml').exists() or (repo_path / 'pixi.toml').exists()
+    # Check environment file (accepts any *environment.yml pattern or pixi.toml)
+    env_files = list(repo_path.glob('*environment.yml'))
+    has_env = len(env_files) > 0 or (repo_path / 'pixi.toml').exists()
     if not has_env:
-        all_issues.append("No environment.yml or pixi.toml found")
+        all_issues.append("No *environment.yml or pixi.toml found")
 
     # Check LICENSE
     license_files = list(repo_path.glob('LICENSE*'))
