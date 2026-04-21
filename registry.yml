@@ -4,7 +4,7 @@ resources:
   type: show
   owner_github: dbouquin
   last_tested: '2026-01-01'
-  status: active
+  status: needs_review
   status_since: '2026-04-21'
   key_dependencies:
   - anaconda-mcp
