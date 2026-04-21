@@ -9,13 +9,11 @@
 Please confirm each item before submitting. The automated quality check will also verify these.
 
 #### All Resources
-- [ ] README includes my GitHub handle as named owner
-- [ ] README includes a `last-tested` date (within the last 90 days)
-- [ ] README includes lifecycle status set to `active`
+- [ ] README includes my GitHub handle as named owner (e.g., @username)
 - [ ] README includes target audience description
-- [ ] `environment.yml` or `pixi.toml` is present and tested
+- [ ] An environment file is present and tested (`environment.yml`, `pixi.toml`, or similar)
 - [ ] MIT `LICENSE` file is present
-- [ ] I have run `/evaluate-resource` locally and resolved all Critical items
+- [ ] I have run quality checks locally and resolved all issues
 
 #### Guides only
 - [ ] README includes 3–5 measurable learning objectives
