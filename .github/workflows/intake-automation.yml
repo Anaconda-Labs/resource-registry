@@ -1,0 +1,82 @@
+name: Intake Automation
+
+on:
+  pull_request:
+    types: [closed]
+    paths:
+      - 'registry.yml'
+
+jobs:
+  process-intake:
+    name: Automate resource onboarding
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to compare diffs
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run intake automation
+        env:
+          INTAKE_TOKEN: ${{ secrets.INTAKE_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TARGET_ORG: 'Anaconda-Labs'  # Change to actual target org
+          REGISTRY_OWNER: ${{ vars.REGISTRY_OWNER || 'dbouquin' }}
+          REGISTRY_REPO: ${{ vars.REGISTRY_REPO || 'resource-registry' }}
+        run: python .github/scripts/intake_automation.py
+
+      - name: Comment on PR with results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## Intake Automation Results\n\n';
+
+            try {
+              const results = fs.readFileSync('/tmp/intake_results.json', 'utf8');
+              const data = JSON.parse(results);
+
+              if (data.success) {
+                comment += '✅ **Successfully onboarded resources:**\n\n';
+                for (const repo of data.processed) {
+                  comment += `- **${repo.name}**\n`;
+                  comment += `  - Transferred: ${repo.transferred ? '✅' : '❌'}\n`;
+                  comment += `  - Workflows added: ${repo.workflows_added ? '✅' : '❌'}\n`;
+                  comment += `  - Badge added: ${repo.badge_added ? '✅' : '❌'}\n`;
+                  comment += `  - Variables set: ${repo.variables_set ? '✅' : '❌'}\n`;
+                  comment += `  - Welcome issue: ${repo.welcome_issue || 'N/A'}\n\n`;
+                }
+
+                comment += '\n### 🔐 Required Manual Step\n\n';
+                comment += 'DevRel must add the `REGISTRY_TOKEN` secret to each transferred repository:\n\n';
+                for (const repo of data.processed) {
+                  comment += `- [ ] Add secret to [${repo.name}](https://github.com/${process.env.TARGET_ORG}/${repo.name}/settings/secrets/actions)\n`;
+                }
+              } else {
+                comment += '❌ **Intake automation encountered errors:**\n\n';
+                comment += data.error + '\n\n';
+                comment += 'Manual intervention required. See workflow logs for details.';
+              }
+            } catch (error) {
+              comment += '⚠️ Could not read automation results. Check workflow logs.';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
