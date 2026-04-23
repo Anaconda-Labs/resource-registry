@@ -23,4 +23,4 @@ resources:
   key_dependencies: []
   registered: '2026-04-23'
   reviewed_by: dbouquin
-  notes: 'Final end-to-end test - should trigger actual transfer'
+  notes: 'Final end-to-end test - with source_org detection fix'
