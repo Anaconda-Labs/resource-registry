@@ -400,7 +400,8 @@ def process_resource(resource):
     repo_name = resource['repo']
     resource_type = resource.get('type', 'show')
     owner = resource.get('owner_github', 'unknown')
-    source_org = resource.get('org', 'Anaconda-Sandbox')
+    # Use source_org if present (for transfer), otherwise use org (already transferred)
+    source_org = resource.get('source_org', resource.get('org'))
 
     log(f"\n{'='*60}")
     log(f"Processing resource: {repo_name}")
