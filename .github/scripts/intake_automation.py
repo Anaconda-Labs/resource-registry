@@ -24,7 +24,7 @@ REGISTRY_OWNER = os.environ.get('REGISTRY_OWNER', 'Anaconda-Labs')
 REGISTRY_REPO = os.environ.get('REGISTRY_REPO', 'resource-registry')
 
 HEADERS = {
-    'Authorization': f'token {INTAKE_TOKEN}',
+    'Authorization': f'Bearer {INTAKE_TOKEN}',
     'Accept': 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
 }
@@ -51,6 +51,10 @@ def get_file_at_sha(sha, path='registry.yml'):
         return yaml.safe_load(content)
     else:
         log(f"Warning: Could not fetch {path} at {sha}: {r.status_code}")
+        try:
+            log(f"Response: {r.json()}")
+        except:
+            log(f"Response: {r.text}")
         return None
 
 
