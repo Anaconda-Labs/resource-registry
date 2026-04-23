@@ -36,15 +36,26 @@
             margin-top: -10px;
             margin-bottom: 20px;
         }
+        .status {
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .status.working { background: #90EE90; color: #006600; }
+        .status.needs-token { background: #FFD700; color: #666600; }
+        .status.testing { background: #87CEEB; color: #003366; }
     </style>
 </head>
 <body>
     <h1>Resource Lifecycle Workflow Diagrams</h1>
-    <p><strong>Date:</strong> 2026-04-22</p>
+    <p><strong>Date:</strong> 2026-04-23</p>
+    <p><strong>Status:</strong> <span class="status needs-token">Needs INTAKE_TOKEN Testing</span></p>
 
     <div class="diagram-container">
-        <h2>Current State: Lifecycle Management (Working Now)</h2>
-        <p class="subtitle">This shows the lifecycle management system as it exists today.</p>
+        <h2>Current State: Lifecycle Management</h2>
+        <p class="subtitle">✅ Working and tested</p>
         <div class="mermaid">
 flowchart TD
     Start([Resource exists in Anaconda-Labs]) --> Owner[Resource Owner tests resource]
@@ -75,16 +86,18 @@ flowchart TD
     </div>
 
     <div class="diagram-container">
-        <h2>Future State: With Intake Automation</h2>
-        <p class="subtitle">This shows what happens once we add the INTAKE_TOKEN and enable automated intake.</p>
+        <h2>Intake Automation: Complete Flow</h2>
+        <p class="subtitle">⚙️ Partially tested - needs end-to-end validation</p>
         <div class="mermaid">
 flowchart TD
-    Start([Developer creates resource<br/>in Anaconda-Sandbox]) --> Quality[Developer adds:<br/>• README with owner<br/>• environment.yml<br/>• LICENSE]
-    Quality --> PR[Developer opens PR<br/>to resource-registry<br/>adding entry to registry.yml]
+    Start([Developer creates resource<br/>in Anaconda-Sandbox]) --> Quality[Developer adds:<br/>• README with @owner<br/>• environment.yml<br/>• LICENSE]
+    Quality --> LocalTest[Optional: Run /evaluate-resource<br/>from criteria_checker locally]
+    LocalTest --> PR[Developer opens PR<br/>to resource-registry]
 
-    PR --> AutoCheck[Automated quality check<br/>validates resource]
+    PR --> AddEntry[Add entry to registry.yml<br/>with source_org field]
+    AddEntry --> AutoCheck[Automated quality check runs]
     AutoCheck --> Pass{Quality<br/>check passes?}
-    Pass -->|No| Reject[PR shows failures]
+    Pass -->|No| Reject[PR shows failures<br/>with specific issues]
     Pass -->|Yes| Review[DevRel reviews PR]
 
     Review --> Approve{DevRel<br/>approves?}
@@ -92,13 +105,23 @@ flowchart TD
     Approve -->|Yes| Merge[DevRel merges PR]
 
     Merge --> Trigger[🤖 Intake automation triggers]
-    Trigger --> Token{INTAKE_TOKEN<br/>has admin:org?}
-    Token -->|No| ManualFail[❌ Automation fails<br/>Admin must fix token]
-    Token -->|Yes| Transfer[Transfer repo<br/>Sandbox → Labs]
+    Trigger --> Detect[Detect new resources<br/>by comparing registry diff]
+    Detect --> Found{New<br/>resources?}
+    Found -->|No| NoOp[No action taken]
+    Found -->|Yes| Auth{INTAKE_TOKEN<br/>valid + SSO?}
+    Auth -->|No| AuthFail[❌ 403 SAML error<br/>or missing scopes]
+    Auth -->|Yes| CheckOrg{source_org<br/>!= target org?}
 
-    Transfer --> AddWorkflows[Add workflow files:<br/>• quality-check.yml<br/>• update-status.yml]
-    AddWorkflows --> AddBadge[Create badge file<br/>Add badge to README]
-    AddBadge --> SetVars[Set repository variables]
+    CheckOrg -->|No| Skip[Skip transfer<br/>already in target]
+    CheckOrg -->|Yes| Transfer[Transfer repo<br/>Sandbox → Labs]
+
+    Transfer --> Success{Transfer<br/>successful?}
+    Success -->|No| TransferFail[❌ Report failure]
+    Success -->|Yes| AddWorkflows[Add workflow files<br/>to transferred repo]
+    Skip --> AddWorkflows
+
+    AddWorkflows --> AddBadge[Create badge file<br/>Update README]
+    AddBadge --> SetVars[Set repository variables:<br/>REGISTRY_OWNER, REGISTRY_REPO]
     SetVars --> Welcome[Create welcome issue<br/>for resource owner]
     Welcome --> PRComment[Post results to PR]
 
@@ -110,29 +133,149 @@ flowchart TD
     OwnerTest --> OwnerCert[Owner runs certification workflow]
     OwnerCert --> Lifecycle[Enters lifecycle monitoring]
 
-    Lifecycle --> Check[Lifecycle Engine runs weekly]
-    Check --> Monitor[Monitors freshness<br/>same as current state]
+    Lifecycle --> Monitor[Monitored weekly<br/>by lifecycle engine]
 
     style Start fill:#e1f5e1
     style Trigger fill:#FFD700
     style Transfer fill:#87CEEB
     style Live fill:#90EE90
-    style ManualFail fill:#ffcccc
+    style AuthFail fill:#ffcccc
+    style TransferFail fill:#ffcccc
     style Manual fill:#FFA500
+    style Monitor fill:#87CEEB
         </div>
     </div>
 
     <div class="diagram-container">
-        <h2>Summary</h2>
-        <p><strong>Current State = Lifecycle Management</strong> ✅ Working</p>
-        <p><strong>Future State = Current + Automated Intake</strong> ⏳ Waiting for INTAKE_TOKEN</p>
-        <p>The lifecycle system (monitoring, badges, certifications) works right now. The intake automation is just about making onboarding faster and less error-prone.</p>
+        <h2>Quality Check Flow (Pre-Transfer)</h2>
+        <p class="subtitle">✅ Working - validates resources before transfer</p>
+        <div class="mermaid">
+flowchart TD
+    Start([PR opened with<br/>registry.yml change]) --> Validate[Validate registry.yml syntax]
+    Validate --> YAMLOk{Syntax<br/>valid?}
+    YAMLOk -->|No| YAMLFail[❌ Show syntax errors]
+    YAMLOk -->|Yes| Extract[Extract new/changed entries]
 
-        <h3>Time Savings with Intake Automation:</h3>
+    Extract --> Loop[For each entry...]
+    Loop --> GetOrg[Check source_org field]
+    GetOrg --> Clone[Clone from source_org<br/>or org if no source_org]
+    Clone --> CloneOk{Clone<br/>successful?}
+    CloneOk -->|No| CloneFail[❌ Repo not found<br/>or no access]
+    CloneOk -->|Yes| CheckFiles[Check required files]
+
+    CheckFiles --> README{README.md<br/>exists?}
+    README -->|No| READMEFail[❌ Missing README]
+    README -->|Yes| Owner{README has<br/>@owner handle?}
+    Owner -->|No| OwnerFail[❌ Missing owner]
+    Owner -->|Yes| Env{environment.yml<br/>or pixi.toml?}
+    Env -->|No| EnvFail[❌ Missing environment spec]
+    Env -->|Yes| License{LICENSE<br/>file exists?}
+    License -->|No| LicenseFail[❌ Missing LICENSE]
+    License -->|Yes| Type[Check type-specific criteria]
+
+    Type --> TypeCheck{Type<br/>requirements met?}
+    TypeCheck -->|No| TypeFail[❌ Missing learning objectives,<br/>business metrics, etc]
+    TypeCheck -->|Yes| Pass[✅ Quality check passed]
+
+    Pass --> AllDone{All entries<br/>checked?}
+    AllDone -->|No| Loop
+    AllDone -->|Yes| Success[✅ PR can be merged]
+
+    style Start fill:#e1f5e1
+    style Success fill:#90EE90
+    style Pass fill:#90EE90
+    style YAMLFail fill:#ffcccc
+    style CloneFail fill:#ffcccc
+    style READMEFail fill:#ffcccc
+    style OwnerFail fill:#ffcccc
+    style EnvFail fill:#ffcccc
+    style LicenseFail fill:#ffcccc
+    style TypeFail fill:#ffcccc
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <h2>System Status Summary</h2>
+
+        <h3>✅ Components Working</h3>
         <ul>
-            <li>Current manual process: ~30 minutes per resource</li>
-            <li>Automated process: ~5 minutes (2 min manual + 3 min automated)</li>
-            <li><strong>Savings: 25 minutes per resource</strong></li>
+            <li><strong>Lifecycle monitoring</strong> - Weekly checks, status updates, issue creation</li>
+            <li><strong>Owner certification</strong> - Update status workflow functional</li>
+            <li><strong>Quality validation</strong> - Pre-merge checks with source_org support</li>
+            <li><strong>Badge system</strong> - Status badges update correctly</li>
+            <li><strong>Authentication</strong> - Bearer token auth, SAML SSO authorization</li>
+        </ul>
+
+        <h3>🔧 Fixes Applied (2026-04-23)</h3>
+        <ul>
+            <li>Changed auth from deprecated 'token' prefix to 'Bearer'</li>
+            <li>Authorized INTAKE_TOKEN for SAML SSO in Anaconda-Labs org</li>
+            <li>Fixed source_org detection in intake_automation.py (line 403)</li>
+            <li>Added source_org field support to quality check workflow</li>
+            <li>Added missing pyyaml dependency in check-resource-quality job</li>
+            <li>Added detailed error logging for API failures</li>
+        </ul>
+
+        <h3>⚠️ Needs Testing</h3>
+        <ul>
+            <li><strong>End-to-end intake automation</strong> - Transfer from Sandbox → Labs
+                <ul>
+                    <li>All components individually verified</li>
+                    <li>Need fresh test with truly new resource to verify complete flow</li>
+                    <li>Test resource exists in Anaconda-Sandbox: test-resource-intake</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>🔐 Required Configuration</h3>
+
+        <h4>In resource-registry (secrets):</h4>
+        <ul>
+            <li><code>INTAKE_TOKEN</code> - ✅ Configured
+                <ul>
+                    <li>Scopes: <code>repo</code> + <code>admin:org</code></li>
+                    <li>SAML SSO: ✅ Authorized for Anaconda-Labs</li>
+                    <li>Purpose: Transfer repos, read/write registry, setup workflows</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4>In each resource repo (manual):</h4>
+        <ul>
+            <li><code>REGISTRY_TOKEN</code> - Manual step required
+                <ul>
+                    <li>Scopes: <code>repo</code> + <code>workflow</code></li>
+                    <li>Purpose: Update registry.yml from resource repo</li>
+                    <li>Time: ~2 minutes per resource</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>📊 Time Savings</h3>
+        <ul>
+            <li><strong>Current manual process:</strong> ~30 minutes per resource</li>
+            <li><strong>Automated process:</strong> ~2-3 minutes (mostly manual REGISTRY_TOKEN step)</li>
+            <li><strong>Savings:</strong> ~25-28 minutes per resource</li>
+        </ul>
+
+        <h3>📋 Next Steps for Tomorrow</h3>
+        <ol>
+            <li>Ensure test-resource-intake exists in Anaconda-Sandbox with required files</li>
+            <li>Remove test-resource-intake from registry.yml (if present)</li>
+            <li>Merge removal</li>
+            <li>Add test-resource-intake back to registry.yml with proper source_org</li>
+            <li>Merge addition PR</li>
+            <li>Watch intake automation transfer the repo</li>
+            <li>Verify all steps complete successfully</li>
+            <li>Manually add REGISTRY_TOKEN</li>
+            <li>Test owner certification workflow</li>
+        </ol>
+
+        <h3>📖 Documentation</h3>
+        <ul>
+            <li><a href="README.md">README.md</a> - Complete system documentation</li>
+            <li><a href=".github/pull_request_template.md">PR Template</a> - Intake request checklist</li>
+            <li><a href="https://github.com/Anaconda-Labs/criteria_checker">criteria_checker</a> - Quality validation tools</li>
         </ul>
     </div>
 </body>
