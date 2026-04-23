@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resource Lifecycle Workflow Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .diagram-container {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resource Lifecycle Workflow Diagrams</h1>
+    <p><strong>Date:</strong> 2026-04-22</p>
+
+    <div class="diagram-container">
+        <h2>Current State: Lifecycle Management (Working Now)</h2>
+        <p class="subtitle">This shows the lifecycle management system as it exists today.</p>
+        <div class="mermaid">
+flowchart TD
+    Start([Resource exists in Anaconda-Labs]) --> Owner[Resource Owner tests resource]
+    Owner --> Certify[Owner runs 'Update Status' workflow]
+    Certify --> Token{REGISTRY_TOKEN<br/>authenticated?}
+    Token -->|Yes| UpdateRegistry[Workflow updates registry.yml<br/>with today's date]
+    Token -->|No| Fail[❌ Workflow fails]
+    UpdateRegistry --> Badge[Badge updates to green 'active']
+    Badge --> Timer[90-day timer resets]
+
+    Timer --> Wait[Wait 90 days...]
+    Wait --> Check[Lifecycle Engine runs<br/>every Monday 9am UTC]
+    Check --> Stale{last_tested<br/>> 90 days?}
+    Stale -->|No| Active[Status stays 'active']
+    Stale -->|Yes| Flag[Status changes to 'needs_review']
+    Flag --> Issue[Issue opened in resource repo]
+    Issue --> Orange[Badge changes to orange]
+    Orange --> Owner
+
+    Active --> Check
+
+    style Start fill:#e1f5e1
+    style Badge fill:#90EE90
+    style Orange fill:#FFA500
+    style Fail fill:#ffcccc
+    style Timer fill:#87CEEB
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <h2>Future State: With Intake Automation</h2>
+        <p class="subtitle">This shows what happens once we add the INTAKE_TOKEN and enable automated intake.</p>
+        <div class="mermaid">
+flowchart TD
+    Start([Developer creates resource<br/>in Anaconda-Sandbox]) --> Quality[Developer adds:<br/>• README with owner<br/>• environment.yml<br/>• LICENSE]
+    Quality --> PR[Developer opens PR<br/>to resource-registry<br/>adding entry to registry.yml]
+
+    PR --> AutoCheck[Automated quality check<br/>validates resource]
+    AutoCheck --> Pass{Quality<br/>check passes?}
+    Pass -->|No| Reject[PR shows failures]
+    Pass -->|Yes| Review[DevRel reviews PR]
+
+    Review --> Approve{DevRel<br/>approves?}
+    Approve -->|No| Changes[Request changes]
+    Approve -->|Yes| Merge[DevRel merges PR]
+
+    Merge --> Trigger[🤖 Intake automation triggers]
+    Trigger --> Token{INTAKE_TOKEN<br/>has admin:org?}
+    Token -->|No| ManualFail[❌ Automation fails<br/>Admin must fix token]
+    Token -->|Yes| Transfer[Transfer repo<br/>Sandbox → Labs]
+
+    Transfer --> AddWorkflows[Add workflow files:<br/>• quality-check.yml<br/>• update-status.yml]
+    AddWorkflows --> AddBadge[Create badge file<br/>Add badge to README]
+    AddBadge --> SetVars[Set repository variables]
+    SetVars --> Welcome[Create welcome issue<br/>for resource owner]
+    Welcome --> PRComment[Post results to PR]
+
+    PRComment --> Manual[👤 DevRel adds<br/>REGISTRY_TOKEN secret<br/>manually ~2 min]
+    Manual --> Live[✅ Resource live!]
+
+    Live --> OwnerNotify[Owner sees welcome issue]
+    OwnerNotify --> OwnerTest[Owner tests resource]
+    OwnerTest --> OwnerCert[Owner runs certification workflow]
+    OwnerCert --> Lifecycle[Enters lifecycle monitoring]
+
+    Lifecycle --> Check[Lifecycle Engine runs weekly]
+    Check --> Monitor[Monitors freshness<br/>same as current state]
+
+    style Start fill:#e1f5e1
+    style Trigger fill:#FFD700
+    style Transfer fill:#87CEEB
+    style Live fill:#90EE90
+    style ManualFail fill:#ffcccc
+    style Manual fill:#FFA500
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <h2>Summary</h2>
+        <p><strong>Current State = Lifecycle Management</strong> ✅ Working</p>
+        <p><strong>Future State = Current + Automated Intake</strong> ⏳ Waiting for INTAKE_TOKEN</p>
+        <p>The lifecycle system (monitoring, badges, certifications) works right now. The intake automation is just about making onboarding faster and less error-prone.</p>
+
+        <h3>Time Savings with Intake Automation:</h3>
+        <ul>
+            <li>Current manual process: ~30 minutes per resource</li>
+            <li>Automated process: ~5 minutes (2 min manual + 3 min automated)</li>
+            <li><strong>Savings: 25 minutes per resource</strong></li>
+        </ul>
+    </div>
+</body>
+</html>
