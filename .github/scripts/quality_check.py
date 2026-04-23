@@ -92,7 +92,7 @@ def main():
         print(f"Quality check FAILED — {len(all_issues)} issue(s) found:\n")
         for issue in all_issues:
             print(f"  ✗ {issue}")
-        print("\nRefer to https://github.com/dbouquin/criteria_checker for guidance.")
+        print("\nRefer to https://github.com/Anaconda-Labs/criteria_checker for guidance.")
         sys.exit(1)
     else:
         print("All quality checks passed ✓")

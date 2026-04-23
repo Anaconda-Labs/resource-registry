@@ -20,7 +20,7 @@ INTAKE_TOKEN = os.environ.get('INTAKE_TOKEN')
 BASE_SHA = os.environ.get('BASE_SHA')
 HEAD_SHA = os.environ.get('HEAD_SHA')
 TARGET_ORG = os.environ.get('TARGET_ORG', 'Anaconda-Labs')
-REGISTRY_OWNER = os.environ.get('REGISTRY_OWNER', 'dbouquin')
+REGISTRY_OWNER = os.environ.get('REGISTRY_OWNER', 'Anaconda-Labs')
 REGISTRY_REPO = os.environ.get('REGISTRY_REPO', 'resource-registry')
 
 HEADERS = {
@@ -346,9 +346,9 @@ Without this secret, the owner certification workflow will fail.
 
 ### 📚 Documentation
 
-- [Getting Started Guide](https://github.com/dbouquin/criteria_checker/blob/main/GETTING_STARTED.md)
-- [Quick Reference](https://github.com/dbouquin/criteria_checker/blob/main/QUICK_REFERENCE.md)
-- [Quality Criteria](https://github.com/dbouquin/criteria_checker/blob/main/README.md)
+- [Getting Started Guide](https://github.com/Anaconda-Labs/criteria_checker/blob/main/GETTING_STARTED.md)
+- [Quick Reference](https://github.com/Anaconda-Labs/criteria_checker/blob/main/QUICK_REFERENCE.md)
+- [Quality Criteria](https://github.com/Anaconda-Labs/criteria_checker/blob/main/README.md)
 
 ### ⏰ Important Dates
 
