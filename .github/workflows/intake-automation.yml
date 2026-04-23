@@ -32,8 +32,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          TARGET_ORG: 'Anaconda-Labs'  # Change to actual target org
-          REGISTRY_OWNER: ${{ vars.REGISTRY_OWNER || 'dbouquin' }}
+          TARGET_ORG: 'Anaconda-Labs'
+          REGISTRY_OWNER: ${{ vars.REGISTRY_OWNER || 'Anaconda-Labs' }}
           REGISTRY_REPO: ${{ vars.REGISTRY_REPO || 'resource-registry' }}
         run: python .github/scripts/intake_automation.py
 
