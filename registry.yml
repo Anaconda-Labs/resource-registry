@@ -12,15 +12,3 @@ resources:
   registered: '2026-04-01'
   reviewed_by: dbouquin
   notes: ''
-- repo: test-resource-intake
-  org: Anaconda-Labs
-  source_org: Anaconda-Sandbox
-  type: show
-  owner_github: dbouquin
-  last_tested: '2026-04-23'
-  status: active
-  status_since: '2026-04-23'
-  key_dependencies: []
-  registered: '2026-04-23'
-  reviewed_by: dbouquin
-  notes: 'End-to-end test - with SAML SSO authorization'
