@@ -106,12 +106,16 @@ jobs:
               org = entry['org']
               repo = entry['repo']
               resource_type = entry['type']
+              # Use source_org if present (for pre-transfer validation), otherwise use org
+              source_org = entry.get('source_org', org)
 
-              print(f"\nChecking {org}/{repo} (type: {resource_type})")
+              print(f"\nChecking {source_org}/{repo} (type: {resource_type})")
+              if source_org != org:
+                  print(f"  (will transfer to {org} after intake)")
               print("-" * 40)
 
-              # Clone the resource repo
-              clone_url = f"https://x-access-token:{gh_token}@github.com/{org}/{repo}.git"
+              # Clone the resource repo from its current location
+              clone_url = f"https://x-access-token:{gh_token}@github.com/{source_org}/{repo}.git"
               tmpdir = tempfile.mkdtemp()
               try:
                   result = subprocess.run(
@@ -119,7 +123,7 @@ jobs:
                       capture_output=True, text=True
                   )
                   if result.returncode != 0:
-                      print(f"  Could not clone {org}/{repo}: {result.stderr}")
+                      print(f"  Could not clone {source_org}/{repo}: {result.stderr}")
                       all_passed = False
                       continue
 
