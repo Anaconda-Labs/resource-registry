@@ -23,4 +23,4 @@ resources:
   key_dependencies: []
   registered: '2026-04-23'
   reviewed_by: dbouquin
-  notes: 'End-to-end test of intake automation workflow - retry with correct token scopes'
+  notes: 'End-to-end test - final attempt with Bearer auth fix'
